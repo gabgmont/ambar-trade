@@ -11,9 +11,6 @@
 
 use soroban_sdk::{contractimpl, Env, Symbol, Address, Vec, map, BytesN};
 
-// Storage keys are tuples: (asset, "price"), (asset, "ts"), (asset, "valid_for"), (asset, "nonce")
-// ACL stored as `("updater", addr)` -> bool
-// Owner stored at key "owner"
 
 pub struct OracleContract;
 
