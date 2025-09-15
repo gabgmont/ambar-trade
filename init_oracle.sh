@@ -1,0 +1,7 @@
+stellar contract invoke \
+  --id CDKSLG237CQNDJZ5MP5JD67WRBSORIOW3XQDL2BGLEWGB73X3V6TLSY7 \
+  --source-account ambar \
+  --network testnet \
+  -- \
+  init \
+  --owner GCRHESVKSSJ3TKXP5BRBPTI7M5OKYULKBX7LBXRLSG7C5SNOD6U74KUH
