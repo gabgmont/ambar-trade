@@ -9,9 +9,9 @@
 // - emits PriceUpdate events
 // - simple historical storage (optional) and getters
 
-use soroban_sdk::{contractimpl, Env, Symbol, Address, Vec, map, BytesN};
+use soroban_sdk::{contract, contractimpl, Env, Symbol, Address};
 
-
+#[contract]
 pub struct OracleContract;
 
 #[contractimpl]
@@ -19,61 +19,64 @@ impl OracleContract {
     // Initialize contract owner. Called once by deployer.
     pub fn init(env: Env, owner: Address) {
         // require not initialized
-        if env.storage().has(&Symbol::new(&env, "owner")) {
+        if env.storage().persistent().has(&Symbol::new(&env, "owner")) {
             panic!("already initialized");
         }
-        env.storage().set(&Symbol::new(&env, "owner"), &owner);
+        env.storage().persistent().set(&Symbol::new(&env, "owner"), &owner);
     }
 
     // Authorize an updater (owner only)
     pub fn authorize_updater(env: Env, updater: Address) {
-        let owner: Address = env.storage().get_unchecked(&Symbol::new(&env, "owner")).unwrap();
-        if env.invoker() != owner {
-            panic!("only owner can authorize updaters");
-        }
+        let owner: Address = env.storage().persistent().get(&Symbol::new(&env, "owner")).unwrap();
+    
+        // Exige que a chamada tenha sido autenticada pelo owner
+        owner.require_auth();
+
         let key = (Symbol::new(&env, "updater"), updater.clone());
-        env.storage().set(&key, &true);
+        env.storage().persistent().set(&key, &true);
     }
 
     // Revoke updater
     pub fn revoke_updater(env: Env, updater: Address) {
-        let owner: Address = env.storage().get_unchecked(&Symbol::new(&env, "owner")).unwrap();
-        if env.invoker() != owner {
-            panic!("only owner can revoke updaters");
-        }
+        let owner: Address = env.storage().persistent().get(&Symbol::new(&env, "owner")).unwrap();
+        
+        // Exige que a chamada tenha sido autenticada pelo owner
+        owner.require_auth();
+
         let key = (Symbol::new(&env, "updater"), updater.clone());
-        env.storage().remove(&key);
+        env.storage().persistent().remove(&key);
     }
 
     // Check if caller is authorized updater
     fn is_authorized_updater(env: &Env, caller: &Address) -> bool {
         let key = (Symbol::new(env, "updater"), caller.clone());
-        env.storage().get(&key).unwrap_or(false)
+        env.storage().persistent().get(&key).unwrap_or(false)
     }
 
     // Set price for an asset. Only updaters allowed.
     pub fn set_price(env: Env, asset: Symbol, price: i128, timestamp: u64, valid_for: u64, nonce: i128) {
-        let caller = env.invoker();
-        if !OracleContract::is_authorized_updater(&env, &caller) {
-            panic!("caller not authorized to set price");
-        }
+        let owner: Address = env.storage().persistent().get(&Symbol::new(&env, "owner")).unwrap();
+        
+        // Exige que a chamada tenha sido autenticada pelo owner
+        owner.require_auth();
         if price <= 0 {
             panic!("price must be positive");
         }
+
         // store values
         let k_price = (asset.clone(), Symbol::new(&env, "price"));
         let k_ts = (asset.clone(), Symbol::new(&env, "ts"));
         let k_valid = (asset.clone(), Symbol::new(&env, "valid_for"));
         let k_nonce = (asset.clone(), Symbol::new(&env, "nonce"));
 
-        env.storage().set(&k_price, &price);
-        env.storage().set(&k_ts, &timestamp);
-        env.storage().set(&k_valid, &valid_for);
-        env.storage().set(&k_nonce, &nonce);
+        env.storage().persistent().set(&k_price, &price);
+        env.storage().persistent().set(&k_ts, &timestamp);
+        env.storage().persistent().set(&k_valid, &valid_for);
+        env.storage().persistent().set(&k_nonce, &nonce);
 
         // Emit PriceUpdate event
         let topic = Symbol::new(&env, "PriceUpdate");
-        let mut data = Vec::<(Symbol, i128)>::new(&env);
+    
         // we emit a simple structured event as bytes: (asset, price, ts, valid_for, nonce)
         // Soroban events can be any serializable values; here we store a blob-like tuple as separate publishes
         env.events().publish((topic.clone(), asset.clone()), (price, timestamp, valid_for, nonce));
@@ -86,10 +89,10 @@ impl OracleContract {
         let k_valid = (asset.clone(), Symbol::new(&env, "valid_for"));
         let k_nonce = (asset.clone(), Symbol::new(&env, "nonce"));
 
-        let price: Option<i128> = env.storage().get(&k_price);
-        let ts: Option<u64> = env.storage().get(&k_ts);
-        let valid: Option<u64> = env.storage().get(&k_valid);
-        let nonce: Option<i128> = env.storage().get(&k_nonce);
+        let price: Option<i128> = env.storage().persistent().get(&k_price);
+        let ts: Option<u64> = env.storage().persistent().get(&k_ts);
+        let valid: Option<u64> = env.storage().persistent().get(&k_valid);
+        let nonce: Option<i128> = env.storage().persistent().get(&k_nonce);
 
         match (price, ts, valid, nonce) {
             (Some(p), Some(t), Some(v), Some(n)) => (p, t, v, n),
@@ -104,11 +107,10 @@ impl OracleContract {
 
     // Allow owner to change owner
     pub fn transfer_ownership(env: Env, new_owner: Address) {
-        let owner: Address = env.storage().get_unchecked(&Symbol::new(&env, "owner")).unwrap();
-        if env.invoker() != owner {
-            panic!("only owner can transfer ownership");
-        }
-        env.storage().set(&Symbol::new(&env, "owner"), &new_owner);
+        let owner: Address = env.storage().persistent().get(&Symbol::new(&env, "owner")).unwrap();
+        owner.require_auth();
+
+        env.storage().persistent().set(&Symbol::new(&env, "owner"), &new_owner);
     }
 }
 
