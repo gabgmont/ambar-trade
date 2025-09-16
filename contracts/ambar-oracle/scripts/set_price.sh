@@ -5,5 +5,5 @@ stellar contract invoke \
   -- \
   set_price \
   --asset Ener \
-  --price 2\
+  --price 1\
   --timestamp 1757961030\
