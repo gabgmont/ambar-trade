@@ -15,7 +15,7 @@ pub struct AmbarMarketplace;
 #[contractimpl]
 impl AmbarMarketplace {
     
-    pub fn initialize(env: Env, owner: Address) {
+    pub fn __constructor(env: Env, owner: Address) {
         if env.storage().persistent().has(&Symbol::new(&env, "owner")) {
             panic!("already initialized");
         }
@@ -45,6 +45,8 @@ impl AmbarMarketplace {
     }
 
     pub fn mint_with_usdt(env: Env, user: Address, symbol: Symbol, usdt_amount: i128) {
+        user.require_auth();
+
         let token_contract: Address = env.storage()
             .persistent()
             .get(&symbol)
@@ -55,8 +57,6 @@ impl AmbarMarketplace {
             .get(&Symbol::new(&env, "usdt"))
             .expect("Contrato USDT nao definido");
         
-        env.current_contract_address().require_auth();
-
         let _: () = env.invoke_contract(
             &usdt_contract,
             &Symbol::new(&env, "transfer_from"),
@@ -84,7 +84,7 @@ impl AmbarMarketplace {
             panic!("invalid price from oracle");
         }
 
-        let tokens_to_mint = usdt_amount / price;
+        let tokens_to_mint = usdt_amount.checked_div(price).expect("Erro ao calcular tokens nao definido");
 
         let _: () = env.invoke_contract(
             &token_contract,
