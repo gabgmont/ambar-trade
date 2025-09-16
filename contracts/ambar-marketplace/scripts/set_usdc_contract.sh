@@ -1,5 +1,5 @@
 stellar contract invoke \
-  --id CCLDLWJLN5FG7HZMRBMJBC2AUGZ3WZ67X3CIA6C5E5HBW55Q4LQHOJKH \
+  --id CA22K2BNEKDPGOC2VSRK3RG5D6DO5EMNCD6GXOWMT3SUMALVYL4AANFL \
   --source-account ambar \
   --network testnet \
   -- \

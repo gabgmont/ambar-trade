@@ -10,22 +10,29 @@ pub struct EnerTrade;
 #[contractimpl]
 impl EnerTrade {
     /// Initialize the token contract
-    pub fn initialize(env: Env, owner: Address) {
+    pub fn __constructor(env: Env, owner: Address) {
         if env.storage().instance().has(&Symbol::new(&env, "initialized")) {
             panic!("already initialized");
         }
         
-        env.storage().instance().set(&Symbol::new(&env, "owner"), &owner);
+        env.storage().persistent().set(&Symbol::new(&env, "owner"), &owner);
         env.storage().instance().set(&Symbol::new(&env, "name"), &String::from_str(&env, "EnerTrade"));
         env.storage().instance().set(&Symbol::new(&env, "symbol"), &String::from_str(&env, "Ener"));
         env.storage().instance().set(&Symbol::new(&env, "decimals"), &18u32);
         env.storage().instance().set(&Symbol::new(&env, "initialized"), &true);
     }
 
+    pub fn set_minter_addr(env: Env, addr: Address) {
+        let owner: Address = env.storage().persistent().get(&Symbol::new(&env, "owner")).unwrap();
+        owner.require_auth();
+
+        env.storage().persistent().set(&Symbol::new(&env, "minter"), &addr);
+    }
+
     /// Mint tokens (owner only)
     pub fn mint(env: Env, account: Address, amount: i128) {
-        let owner: Address = env.storage().instance().get(&Symbol::new(&env, "owner")).unwrap();
-        owner.require_auth();
+        let minter: Address = env.storage().persistent().get(&Symbol::new(&env, "minter")).unwrap();
+        minter.require_auth();
         
         let balance_key = (Symbol::new(&env, "balance"), account.clone());
         let current_balance: i128 = env.storage().persistent().get(&balance_key).unwrap_or(0);
